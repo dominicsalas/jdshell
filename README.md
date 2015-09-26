@@ -1,3 +1,3 @@
 # jdshell
 
-Shell for operating systems by Jayson Grace (jayson.e.grace@gmail.com) and Dominic Salas.
+Shell for operating systems by Jayson Grace (jayson.e.grace@gmail.com) and Dominic Salas (dominic.salas@gmail.com).
