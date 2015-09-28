@@ -16,6 +16,15 @@
 typedef int bool;
 enum { false, true };
 
+typedef struct
+{
+    // Tokens the container will hold
+    char** tokens;
+
+    // Number of tokens the container has
+    int tokenCount;
+} TokenContainer;
+
 bool DEBUG = true;
 
 /**
@@ -31,61 +40,61 @@ char *getInput(int buffer)
 }
 
 /**
-  @brief Debug function used to print the contents of a token array
+  @brief Debug function used to print the contents of a token array within a TokenContainer
+  @param tokens The token array we want to print
+  @param tokenArrSize The size of the token array
   */
-void printTokens(char **tokens, int bufferSize)
+void printTokens(TokenContainer *tc)
 {
+    printf("Number of tokens in the TokenContainer: %d\n", tc->tokenCount);
+
     int i;
-    for (i = 0; i < (bufferSize); i++)
-        printf ("token[%d] = %s\n", i, tokens[i]);
+    for (i = 0; i < tc->tokenCount; i++)
+        printf ("token[%d] = %s\n", i, tc->tokens[i]);
 }
 
 /**
   @brief Parse the input into a token array, which will continually resize
   @param input Line input that we want to parse
   */
-char **parseInput(char *input)
+TokenContainer parseInput(char *input)
 {
-    char **tokens = NULL;
+    TokenContainer tc;
+    tc.tokens = NULL;
+    tc.tokenCount = 0;
     int loc = 0;
     char *token = strtok(input, " ");
 
     while (token)
     {
         // Dynamically resize
-        tokens = realloc (tokens, ++loc * sizeof (char*));
+        tc.tokens = realloc (tc.tokens, ++loc * sizeof (char*));
 
         // Check for failed memory allocation
-        if (tokens == NULL)
+        if (tc.tokens == NULL)
         {
             fprintf(stderr, "Unable to allocate memory for parsing\n");
             exit (EXIT_FAILURE);
         }
-        tokens[loc-1] = token;
+        tc.tokens[loc-1] = token;
+        tc.tokenCount++;
 
         token = strtok(NULL, " ");
     }
 
-    tokens = realloc (tokens, (loc+1) * sizeof (char*));
-    tokens[loc] = 0;
+    tc.tokens = realloc (tc.tokens, (loc+1) * sizeof (char*));
+    tc.tokens[loc] = 0;
 
-    if (DEBUG)
-        printTokens(tokens, loc+1);
-
-    return tokens;
+    return tc;
 }
 
-int launchCommands(char **command)
+int launchCommands(TokenContainer *tc)
 {
-    int i;
-
     // Check for empty input
-    if (command[0] == NULL)
+    if (tc->tokens[0] == NULL)
         return 1;
-    return 0; 
+    return 0;
 }
-
-
 
 /**
   @brief Used to run the shell loop and subsequently execute commands.
@@ -93,7 +102,7 @@ int launchCommands(char **command)
 void shellLoop()
 {
     char *input;
-    char **parsedInput;
+    TokenContainer tc;
     int bufferSize = 80;
     bool running = true;
 
@@ -101,10 +110,12 @@ void shellLoop()
     {
         printf("mini437sh-JG-DS: ");
         input = getInput(bufferSize);
-        parsedInput = parseInput(input);
-        launchCommands(parsedInput);
+        tc = parseInput(input);
+        if (DEBUG)
+            printTokens(&tc);
+        launchCommands(&tc);
         free(input);
-        free(parsedInput);
+        free(tc.tokens);
     }
 }
 /** 
