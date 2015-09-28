@@ -27,11 +27,12 @@ cd src && gcc main.c -o jdshell
 
 ### Todo
 - [x] Create shell prompt
-- [] Implement exit
+- [] Implement executing commands - Jayson
+- [] Implement exit - Jayson
 - [] Implement last10
 - [] Add Error handling  
 - [] Implement "command information line"
 - [] Implement Background job handling
-- [x] Implement signal handler
+- [] Implement signal handler
 - [] Ensure ls, ps, sleep and date work with jdshell
 - [] Create report
