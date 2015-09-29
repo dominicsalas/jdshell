@@ -127,7 +127,7 @@ bool launchCommands(TokenContainer *tc)
 /**
 @brief Loop getting input and executing it.
 */
-void shellLoop(void)
+void shellLoop()
 {
   char *input;
   TokenContainer tc;
