@@ -2,7 +2,7 @@
 
 [![License](http://img.shields.io/:license-mit-blue.svg)](http://doge.mit-license.org)
 
-Shell for operating systems class at UNM (cs-481) by Jayson Grace (jayson.e.grace@gmail.com) and Dominic Salas (dominic.salas@gmail.com).
+Shell for operating systems class at UNM (CS-481) by Jayson Grace (jayson.e.grace@gmail.com) and Dominic Salas (dominic.salas@gmail.com).
 
 
 ## Supported Commands
@@ -28,10 +28,10 @@ cd src && gcc main.c -o jdshell
 ### Todo
 - [x] Create shell prompt
 - [x] Implement executing commands
-- [] Implement exit - Jayson
+- [x] Implement exit
 - [] Implement last10 - Dominic
 - [] Add Error handling  
-- [] Implement "command information line"
+- [] Implement "command information line" - Jayson
 - [] Implement Background job handling - Jayson
 - [] Implement signal handler - Jayson
 - [x] Ensure ls, ps, sleep and date work with jdshell
