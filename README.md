@@ -38,3 +38,6 @@ cd src && gcc main.c -o jdshell
 - [x] Test with vim
 - [] Take Snapshots
 - [] Create report
+
+### Extra
+- [] Implement cd
