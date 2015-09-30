@@ -6,8 +6,8 @@ Shell for operating systems class at UNM (CS-481) by Jayson Grace (jayson.e.grac
 
 
 ## Supported Commands
-* exit
-* last10 - gives you the last ten commands run
+* exit - Exit the shell.
+* last10 - Gives you the last ten commands run.
 
 ## Instructions
 
