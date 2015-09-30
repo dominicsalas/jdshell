@@ -33,6 +33,8 @@ typedef struct
 
 bool DEBUG = false;
 
+
+
 /**
   @brief Used to get the line input by the user.
   */
@@ -73,6 +75,7 @@ TokenContainer parseInput(char *input)
     tc.tokenCount = 0;
     int loc = 0;
     char *token = strtok(input, DELIMITER);
+
 
     while (token)
     {
