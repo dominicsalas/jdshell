@@ -1,7 +1,7 @@
 /**
  * @file   mini437_JG_DS.c
  * @author Jayson Grace (jaysong@unm.edu)
- * @author Dominic Salas
+ * @author Dominic Salas (dominic.salas@gmail.com)
  * @date   9/27/2015
  * @brief  Shell for PA04.
  */
