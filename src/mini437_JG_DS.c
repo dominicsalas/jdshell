@@ -12,6 +12,12 @@
 #include <ctype.h>
 // Gives us strtok
 #include <string.h>
+// Gives us fork and execvp
+#include <unistd.h>
+// Gives us waitpid
+#include <sys/wait.h>
+// Gives us rusage
+#include <sys/resource.h>
 
 typedef int bool;
 enum { false, true };
@@ -91,18 +97,6 @@ TokenContainer parseInput(char *input)
     return tc;
 }
 
-/**
-  @brief Check if command input maches a set of predefined commands for the shell
-  @param tc TokenContainer struct with both the tokens and their count
-  @return true to continue execution of the shell, false if the user has requested to exit
-  */
-bool checkPredefined(TokenContainer *tc)
-{
-    if (strcmp(tc->tokens[0], "exit") == 0)
-        return false;
-    else
-        return true; 
-}
 
 /**
   @brief Launch program made up of tokens in parameter TokenContainer and terminate when done
@@ -136,6 +130,34 @@ bool launchCommands(TokenContainer *tc)
     return true;
 }
 
+/**
+  @brief Validate if a command has been input
+  @param tc TokenContainer struct with both the tokens and their count
+  @return true if no input, false otherwise
+  */
+bool emptyInput(TokenContainer *tc)
+{
+    if (tc->tokens[0] == NULL)
+    {
+        printf("\n");
+        if (DEBUG)
+            printf("You didn't enter anything. Try again.\n");
+        return true;
+    }
+    return false;
+}
+
+/**
+  @brief Determine if the exit command has been input
+  @param tc TokenContainer struct with both the tokens and their count
+  @return true if exit requested, false otherwise
+  */
+bool exitRequested(TokenContainer *tc)
+{
+    if (strcmp(tc->tokens[0], "exit") == 0)
+        return true;
+    return false;
+}
 
 /**
   @brief Loop getting input and executing it.
@@ -151,15 +173,18 @@ void shellLoop()
         printf("mini437sh-JG-DS: ");
         input = getInput();
         tc = parseInput(input);
-        if (DEBUG)
-            printTokens(&tc);
-        running = checkPredefined(&tc);
-        if (running)
-            running = launchCommands(&tc);
+        if (!emptyInput(&tc))
+        {
+            if (exitRequested(&tc))
+                running = false;
+            else
+            {
+                running = launchCommands(&tc);
+            }
+        }
         free(input);
         free(tc.tokens);
     }
-    printf("PEACE");
     //  terminateBackgroundJobs
 }
 
