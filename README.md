@@ -32,11 +32,11 @@ Please fork and do a pull request when you've created a feature that you want to
 - [x] Create shell prompt
 - [x] Implement executing commands
 - [x] Implement exit
-- [] Implement last10 - Dominic
+- [] Implement last10
 - [] Add Error handling  
-- [] Implement "command information line" - Jayson
-- [] Implement Background job handling - Jayson
-- [] Implement signal handler - Jayson
+- [] Implement "command information line"
+- [] Implement Background job handling
+- [] Implement signal handler
 - [x] Ensure ls, ps, sleep and date work with jdshell
 - [x] Test with vim
 - [] Take Snapshots
