@@ -25,6 +25,9 @@ cd src && gcc main.c -o jdshell
 ./jdshell
 ```
 
+## Contributing
+Please fork and do a pull request when you've created a feature that you want to be added.
+
 ### Todo
 - [x] Create shell prompt
 - [x] Implement executing commands
