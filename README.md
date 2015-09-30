@@ -33,7 +33,7 @@ Please fork and do a pull request when you've created a feature that you want to
 - [x] Implement executing commands
 - [x] Implement exit
 - [] Implement last10
-- [] Add Error handling  
+- [] Ensure shell won't exit on error  
 - [] Implement "command information line"
 - [] Implement Background job handling
 - [] Implement signal handler
