@@ -34,7 +34,7 @@ Please fork and do a pull request when you've created a feature that you want to
 - [x] Implement exit
 - [] Implement last10
 - [] Ensure shell won't exit on error  
-- [] Implement "command information line"
+- [x] Implement "command information lines"
 - [] Implement Background job handling
 - [] Implement signal handler
 - [x] Ensure ls, ps, sleep and date work with jdshell
