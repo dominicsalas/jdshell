@@ -8,8 +8,6 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-// Gives us isspace
-#include <ctype.h>
 // Gives us strtok
 #include <string.h>
 // Gives us fork and execvp
@@ -31,6 +29,8 @@ typedef struct
     int tokenCount;
 } TokenContainer;
 
+enum timeType {USER, SYSTEM};
+
 bool DEBUG = false;
 
 
@@ -49,17 +49,63 @@ char *getInput()
 }
 
 /**
-  @brief Debug function used to print the contents of a token array within a TokenContainer
-  @param tokens The token array we want to print
-  @param tokenArrSize The size of the token array
+  @brief Print required pre-run information line
+  @param tokens The token array with the information we want to print
   */
-void printTokens(TokenContainer *tc)
+void preRun(TokenContainer *tc)
 {
-    printf("Number of tokens in the TokenContainer: %d\n", tc->tokenCount);
+    if (DEBUG)
+        printf("Number of tokens in the TokenContainer: %d\n", tc->tokenCount);
+
+    printf("PreRun: %s ", tc->tokens[0]);
 
     int i;
-    for (i = 0; i < tc->tokenCount; i++)
-        printf ("token[%d] = %s\n", i, tc->tokens[i]);
+    for (i = 1; i < tc->tokenCount; i++)
+    {
+        printf("%d:%s", i, tc->tokens[i]);
+        // Ensure we don't print a comma at the end of the print output
+        if (i != tc->tokenCount-1)
+            printf(",");
+    }
+    // Used for aesthetics
+    printf("\n");
+}
+
+/**
+  @brief Get the completion time for the current command
+  @param type system or user time
+  @param startTime The start time for the current command
+  */
+void getCompletionTime(enum timeType type, struct rusage* startTime)
+{
+    struct rusage currentTime;
+    getrusage(RUSAGE_CHILDREN, &currentTime);
+
+    if (type == USER)
+    {
+        printf("user time %ld.%06ld ", currentTime.ru_utime.tv_sec - startTime->ru_utime.tv_sec,
+                (long)currentTime.ru_utime.tv_usec - startTime->ru_utime.tv_usec);
+    }
+    else
+    {
+        printf("system time %ld.%06ld\n", currentTime.ru_stime.tv_sec - startTime->ru_stime.tv_sec,
+                (long)currentTime.ru_stime.tv_usec - startTime->ru_stime.tv_usec);
+    }
+}
+
+/**
+  @brief Print required post-run information line
+  @param tc TokenContainer struct with both the tokens and their count
+  @param start The starting time of the program
+  @param child The child process id
+  */
+void postRun(TokenContainer *tc, struct rusage* start, pid_t child)
+{
+    printf("PostRun(PID:%d): %s -- ", child, tc->tokens[0]);
+    enum timeType type = USER;
+    getCompletionTime(type, start);
+    type = SYSTEM;
+    getCompletionTime(type, start);
 }
 
 /**
@@ -100,7 +146,6 @@ TokenContainer parseInput(char *input)
     return tc;
 }
 
-
 /**
   @brief Launch program made up of tokens in parameter TokenContainer and terminate when done
   @param tc TokenContainer struct with both the tokens and their count
@@ -108,11 +153,16 @@ TokenContainer parseInput(char *input)
   */
 bool launchCommands(TokenContainer *tc)
 {
-    pid_t pid;
-    pid = fork();
+    pid_t child;
+    struct rusage start;
+
+    preRun(tc);
+    getrusage(RUSAGE_CHILDREN, &start);
+
+    child = fork();
 
     // Make sure pid is child process
-    if (pid == 0)
+    if (child == 0)
     {
         if (execvp(tc->tokens[0], tc->tokens) == -1)
         {
@@ -120,7 +170,7 @@ bool launchCommands(TokenContainer *tc)
         }
         exit(EXIT_FAILURE);
     }
-    else if (pid < 0)
+    else if (child < 0)
     {
         perror("Error forking in launchCommands");
     }
@@ -128,7 +178,8 @@ bool launchCommands(TokenContainer *tc)
     else
     {
         int returnStatus;
-        waitpid(pid, &returnStatus, 0);
+        waitpid(child, &returnStatus, 0);
+        postRun(tc, &start, child);
     }
     return true;
 }
@@ -202,3 +253,4 @@ int main(int argc, char **argv)
     shellLoop();
     return EXIT_SUCCESS;
 }
+
