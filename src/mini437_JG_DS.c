@@ -33,7 +33,50 @@ enum timeType {USER, SYSTEM};
 
 bool DEBUG = false;
 
+//A 2d array to record the last 10 entries
+char last10[10][64];
 
+/**
+ * This function will be used to record the last 10 commands
+ *
+ */
+void commandHistory(char **input)
+{
+  //Total number of entries in our last10 array
+  static int total = 0;
+  int i;
+
+  strcpy(last10[total++], *input);
+
+  //I need to not print out empty commands
+//  if (strcmp("\n", **input) || strcmp(" ", **input))
+//  {
+//    return;
+//  }
+//  else
+//  {
+//    strcpy(last10[total++], *input);
+//  }
+
+  if (strcmp("last10\n", *input) == 0)
+  {
+    for (i = 0; i < total; i++)
+    {
+      printf("%s", last10[i]);
+    }
+  }
+
+  if (total == 10)
+  {
+    total = 9;
+    for (i = 1; i < 10; i++)
+    {
+      *last10[i-1] = '\0';
+      strcpy(last10[i-1], last10[i]);
+    }
+    *last10[total] = '\0';
+  }
+}
 
 /**
   @brief Used to get the line input by the user.
@@ -45,6 +88,7 @@ char *getInput()
     size_t bufferSize = BUFFER_SIZE;
 
     getline(&lineInput, &bufferSize, stdin);
+    commandHistory(&lineInput);
     return lineInput;
 }
 
@@ -121,7 +165,6 @@ TokenContainer parseInput(char *input)
     tc.tokenCount = 0;
     int loc = 0;
     char *token = strtok(input, DELIMITER);
-
 
     while (token)
     {
