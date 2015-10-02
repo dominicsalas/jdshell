@@ -308,6 +308,8 @@ bool exitRequested(TokenContainer *tc)
 /**
   @brief Loop getting input and executing it.
   */
+  #define YELLOW "\x1b[33m"
+  #define NORMAL_COLOR "\x1b[0m"
 void shellLoop()
 {
     char *input;
@@ -316,7 +318,7 @@ void shellLoop()
 
     while(running)
     {
-        printf("mini437sh-JG-DS: ");
+        printf(YELLOW "λ mini437sh-JG-DS: " NORMAL_COLOR);
         input = getInput();
         tc = parseInput(input);
         if (!emptyInput(&tc))
