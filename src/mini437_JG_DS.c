@@ -184,9 +184,9 @@ bool checkBackgroundJob(TokenContainer *tc)
 }
 
 /**
-@brief Add command to history
-@param tc TokenContainer struct with both the tokens and their count
-*/
+  @brief Add command to history
+  @param tc TokenContainer struct with both the tokens and their count
+  */
 void addToHistory(TokenContainer *tc)
 {
     int i = 0;
@@ -234,30 +234,34 @@ bool launchCommands(TokenContainer *tc)
     getrusage(RUSAGE_CHILDREN, &start);
 
     addToHistory(tc);
-    child = fork();
 
-    // Make sure pid is child process
-    if (child == 0)
-    {
-        if (strcmp(tc->tokens[0], "last10") == 0)
-            printLastTen();
-        else if (execvp(tc->tokens[0], tc->tokens) == -1)
-        {
-            perror("Failed on child process in launchCommands");
-        }
-        exit(EXIT_FAILURE);
-    }
-    else if (child < 0)
-    {
-        perror("Error forking in launchCommands");
-    }
-    // Parent processes code
+    if (strcmp(tc->tokens[0], "last10") == 0)
+        printLastTen();
     else
     {
-        int returnStatus;
-        waitpid(child, &returnStatus, 0);
-        postRun(tc, &start, child);
+        child = fork();
+
+        // Make sure pid is child process
+        if (child == 0)
+        {
+            if (execvp(tc->tokens[0], tc->tokens) == -1)
+            {
+                perror("Failed on child process in launchCommands");
+            }
+            exit(EXIT_FAILURE);
+        }
+        else if (child < 0)
+        {
+            perror("Error forking in launchCommands");
+        }
+        // Parent processes code
+        else
+        {
+            int returnStatus;
+            waitpid(child, &returnStatus, 0);
+        }
     }
+    postRun(tc, &start, child);
     return true;
 }
 
@@ -308,8 +312,8 @@ bool exitRequested(TokenContainer *tc)
 /**
   @brief Loop getting input and executing it.
   */
-  #define YELLOW "\x1b[33m"
-  #define NORMAL_COLOR "\x1b[0m"
+#define YELLOW "\x1b[33m"
+#define NORMAL_COLOR "\x1b[0m"
 void shellLoop()
 {
     char *input;
