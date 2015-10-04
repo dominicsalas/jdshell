@@ -226,6 +226,20 @@ void addToHistory(TokenContainer *tc)
 }
 
 /**
+  @brief Used if we want to change the current directory with the cd command
+  @param tc TokenContainer struct with both the tokens and their count
+  */
+void changeDirectory(TokenContainer *tc)
+{
+    if (tc->tokens[1] == NULL)
+    {
+        tc->tokens[1] = getenv("HOME");
+    }
+    if (chdir(tc->tokens[1]) != 0)
+        perror("Error occured in changing directory");
+}
+
+/**
   @brief Launch program made up of tokens in parameter TokenContainer and terminate when done
   @param tc TokenContainer struct with both the tokens and their count
   @return true to continue execution of the shell
@@ -243,6 +257,8 @@ bool launchCommands(TokenContainer *tc)
 
     if (strcmp(tc->tokens[0], "last10") == 0)
         printLastTen();
+    else if (strcmp(tc->tokens[0], "cd") == 0)
+        changeDirectory(tc);
     else
     {
         child = fork();
