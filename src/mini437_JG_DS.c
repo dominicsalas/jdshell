@@ -20,6 +20,7 @@
 #include <signal.h>
 // Gives us open
 #include <fcntl.h>
+// Gives us open
 #include <sys/stat.h>
 
 void printLastTen();
@@ -180,7 +181,6 @@ bool checkBackgroundJob(TokenContainer *tc)
 {
     char *bgString = tc->tokens[tc->tokenCount-1];
     int length = strlen(bgString);
-    //if (strcmp(blah[length], "&") == 1)
     if (bgString[length-1] == '&')
     {
         if (DEBUG)
@@ -352,6 +352,26 @@ bool exitRequested(TokenContainer *tc)
 }
 
 /**
+  @brief Kills the background processes running
+ */
+void killChildren()
+{
+    int status;
+    while(bgJobs.bgJobCounter > 0)
+    {
+        printf("[%d] %d : Exited\n", bgJobs.bgJobCounter,
+               bgJobs.backgroundJobs[bgJobs.bgJobCounter-1]);
+
+        waitpid(bgJobs.backgroundJobs[bgJobs.bgJobCounter-1], &status, WNOHANG);
+        if (status)
+        {
+            kill(bgJobs.backgroundJobs[bgJobs.bgJobCounter-1], SIGKILL);
+        }
+        bgJobs.bgJobCounter--;
+    }
+}
+
+/**
   @brief Loop getting input and executing it.
   */
 #define YELLOW "\x1b[33m"
@@ -379,13 +399,7 @@ void shellLoop()
         free(input);
         free(tc.tokens);
     }
-    //  terminateBackgroundJobs
-    while(bgJobs.bgJobCounter > 0)
-    {
-        printf("[%d] %d : Exited\n", bgJobs.bgJobCounter,
-                bgJobs.backgroundJobs[bgJobs.bgJobCounter-1]);
-        bgJobs.backgroundJobs[--bgJobs.bgJobCounter] = 0;
-    }
+    killChildren();
 }
 
 /**
