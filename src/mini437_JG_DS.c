@@ -18,6 +18,9 @@
 #include <sys/resource.h>
 // Gives us signal for signal handling
 #include <signal.h>
+// Gives us open
+#include <fcntl.h>
+#include <sys/stat.h>
 
 void printLastTen();
 
@@ -56,6 +59,7 @@ enum timeType {USER, SYSTEM};
 bool DEBUG = false;
 
 CommandContainer commands;
+bgContainer bgJobs;
 
 /**
   @brief Used to get the line input by the user.
@@ -174,7 +178,10 @@ TokenContainer parseInput(char *input)
   */
 bool checkBackgroundJob(TokenContainer *tc)
 {
-    if (strcmp(tc->tokens[tc->tokenCount-1], "&") == 0)
+    char *bgString = tc->tokens[tc->tokenCount-1];
+    int length = strlen(bgString);
+    //if (strcmp(blah[length], "&") == 1)
+    if (bgString[length-1] == '&')
     {
         if (DEBUG)
             printf("Background job requested\n");
@@ -216,7 +223,6 @@ void addToHistory(TokenContainer *tc)
 
     if (DEBUG)
         printf("Count: %d\n", commands.commandCount);
-
 }
 
 /**
@@ -228,7 +234,7 @@ bool launchCommands(TokenContainer *tc)
 {
     pid_t child;
     struct rusage start;
-    //    bool bg = checkBackgroundJob(tc);
+    bool bg = checkBackgroundJob(tc);
 
     preRun(tc);
     getrusage(RUSAGE_CHILDREN, &start);
@@ -241,10 +247,22 @@ bool launchCommands(TokenContainer *tc)
     {
         child = fork();
 
+        if(!child)
+        {
+            if(bg)
+            {
+                int out = open("/dev/null", O_WRONLY);
+                dup2(out, 0);
+                dup2(out, 1);
+                dup2(out, 2);
+                close(out);
+            }
+        }
+
         // Make sure pid is child process
         if (child == 0)
         {
-            if (execvp(tc->tokens[0], tc->tokens) == -1)
+            if (execvp(tc->tokens[0], tc->tokens) == -1 && !bg)
             {
                 perror("Failed on child process in launchCommands");
             }
@@ -257,8 +275,16 @@ bool launchCommands(TokenContainer *tc)
         // Parent processes code
         else
         {
-            int returnStatus;
-            waitpid(child, &returnStatus, 0);
+            if (bg)
+            {
+                bgJobs.backgroundJobs[bgJobs.bgJobCounter++] = child;
+                printf("[%d] %d : Running\n", bgJobs.bgJobCounter, child);
+            }
+            else
+            {
+                int returnStatus;
+                waitpid(child, &returnStatus, 0);
+            }
         }
     }
     postRun(tc, &start, child);
@@ -338,6 +364,12 @@ void shellLoop()
         free(tc.tokens);
     }
     //  terminateBackgroundJobs
+    while(bgJobs.bgJobCounter > 0)
+    {
+        printf("[%d] %d : Exited\n", bgJobs.bgJobCounter,
+                bgJobs.backgroundJobs[bgJobs.bgJobCounter-1]);
+        bgJobs.backgroundJobs[--bgJobs.bgJobCounter] = 0;
+    }
 }
 
 /**
@@ -361,7 +393,7 @@ int main(int argc, char **argv)
 {
     signal(SIGINT, signalHandler);
     commands.commandCount = 0;
+    bgJobs.bgJobCounter = 0;
     shellLoop();
     return EXIT_SUCCESS;
 }
-
