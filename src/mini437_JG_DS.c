@@ -20,6 +20,7 @@
 #include <signal.h>
 // Gives us open
 #include <fcntl.h>
+// Gives us open
 #include <sys/stat.h>
 
 void printLastTen();
@@ -110,12 +111,12 @@ void getCompletionTime(enum timeType type, struct rusage* startTime)
     if (type == USER)
     {
         printf("user time %ld.%06ld ", currentTime.ru_utime.tv_sec - startTime->ru_utime.tv_sec,
-                (long)currentTime.ru_utime.tv_usec - startTime->ru_utime.tv_usec);
+               (long)currentTime.ru_utime.tv_usec - startTime->ru_utime.tv_usec);
     }
     else
     {
         printf("system time %ld.%06ld\n", currentTime.ru_stime.tv_sec - startTime->ru_stime.tv_sec,
-                (long)currentTime.ru_stime.tv_usec - startTime->ru_stime.tv_usec);
+               (long)currentTime.ru_stime.tv_usec - startTime->ru_stime.tv_usec);
     }
 }
 
@@ -180,7 +181,6 @@ bool checkBackgroundJob(TokenContainer *tc)
 {
     char *bgString = tc->tokens[tc->tokenCount-1];
     int length = strlen(bgString);
-    //if (strcmp(blah[length], "&") == 1)
     if (bgString[length-1] == '&')
     {
         if (DEBUG)
@@ -194,9 +194,10 @@ bool checkBackgroundJob(TokenContainer *tc)
   @brief Add command to history
   @param tc TokenContainer struct with both the tokens and their count
   */
-void addToHistory(TokenContainer *tc)
+void addToHistory(char *input)
 {
     int i = 0;
+    strtok(input, "\n");
 
     // If ten commands are in history, delete the first one and shift the rest up
     if (commands.commandCount == 10)
@@ -210,10 +211,10 @@ void addToHistory(TokenContainer *tc)
         *commands.last10[commands.commandCount] = '\0';
     }
     else
-        if (DEBUG)
-            printLastTen();
+    if (DEBUG)
+        printLastTen();
 
-    strcpy(commands.last10[commands.commandCount++], *tc->tokens);
+    strcpy(commands.last10[commands.commandCount++], input);
 
     if (DEBUG)
     {
@@ -244,7 +245,7 @@ void changeDirectory(TokenContainer *tc)
   @param tc TokenContainer struct with both the tokens and their count
   @return true to continue execution of the shell
   */
-bool launchCommands(TokenContainer *tc)
+bool launchCommands(TokenContainer *tc, char *input)
 {
     pid_t child;
     struct rusage start;
@@ -253,7 +254,7 @@ bool launchCommands(TokenContainer *tc)
     preRun(tc);
     getrusage(RUSAGE_CHILDREN, &start);
 
-    addToHistory(tc);
+    addToHistory(input);
 
     if (strcmp(tc->tokens[0], "last10") == 0)
         printLastTen();
@@ -288,7 +289,7 @@ bool launchCommands(TokenContainer *tc)
         {
             perror("Error forking in launchCommands");
         }
-        // Parent processes code
+            // Parent processes code
         else
         {
             if (bg)
@@ -352,13 +353,33 @@ bool exitRequested(TokenContainer *tc)
 }
 
 /**
+  @brief Kills the background processes running
+  */
+void killChildren()
+{
+    int status;
+    while(bgJobs.bgJobCounter > 0)
+    {
+        printf("[%d] %d : Exited\n", bgJobs.bgJobCounter,
+               bgJobs.backgroundJobs[bgJobs.bgJobCounter-1]);
+
+        waitpid(bgJobs.backgroundJobs[bgJobs.bgJobCounter-1], &status, WNOHANG);
+        if (status)
+        {
+            kill(bgJobs.backgroundJobs[bgJobs.bgJobCounter-1], SIGKILL);
+        }
+        bgJobs.bgJobCounter--;
+    }
+}
+
+/**
   @brief Loop getting input and executing it.
   */
 #define YELLOW "\x1b[33m"
 #define NORMAL_COLOR "\x1b[0m"
 void shellLoop()
 {
-    char *input;
+    char *input, *originalInput;
     TokenContainer tc;
     bool running = true;
 
@@ -366,6 +387,8 @@ void shellLoop()
     {
         printf(YELLOW "λ mini437sh-JG-DS: " NORMAL_COLOR);
         input = getInput();
+        originalInput = malloc(strlen(input) + 1);
+        strcpy(originalInput, input);
         tc = parseInput(input);
         if (!emptyInput(&tc))
         {
@@ -373,19 +396,14 @@ void shellLoop()
                 running = false;
             else
             {
-                running = launchCommands(&tc);
+                running = launchCommands(&tc, originalInput);
             }
         }
         free(input);
         free(tc.tokens);
+        free(originalInput);
     }
-    //  terminateBackgroundJobs
-    while(bgJobs.bgJobCounter > 0)
-    {
-        printf("[%d] %d : Exited\n", bgJobs.bgJobCounter,
-                bgJobs.backgroundJobs[bgJobs.bgJobCounter-1]);
-        bgJobs.backgroundJobs[--bgJobs.bgJobCounter] = 0;
-    }
+    killChildren();
 }
 
 /**
@@ -395,6 +413,7 @@ void shellLoop()
 void signalHandler(int signalNumber)
 {
     signal(SIGINT, signalHandler);
+    printf("\n");
     printLastTen();
     fflush(stdout);
 }
