@@ -44,6 +44,13 @@ typedef struct
 
     // Number of background jobs running
     int bgJobCounter;
+
+    // Start times for background processes
+    struct rusage starts[1024];
+
+    // Stores background commands
+    char bgCommands[64][64];
+
 } bgContainer;
 
 typedef struct
@@ -294,7 +301,9 @@ bool launchCommands(TokenContainer *tc, char *input)
         {
             if (bg)
             {
-                bgJobs.backgroundJobs[bgJobs.bgJobCounter++] = child;
+                bgJobs.backgroundJobs[bgJobs.bgJobCounter] = child;
+                strcpy(bgJobs.bgCommands[bgJobs.bgJobCounter],tc->tokens[0]);
+                bgJobs.starts[bgJobs.bgJobCounter++] = start;
                 printf("[%d] %d : Running\n", bgJobs.bgJobCounter, child);
             }
             else
@@ -304,7 +313,10 @@ bool launchCommands(TokenContainer *tc, char *input)
             }
         }
     }
-    postRun(tc, &start, child);
+    if (!bg)
+    {
+        postRun(tc, &start, child);
+    }
     return true;
 }
 
@@ -358,12 +370,23 @@ bool exitRequested(TokenContainer *tc)
 void killChildren()
 {
     int status;
+    pid_t child;
+    struct rusage start;
+
     while(bgJobs.bgJobCounter > 0)
     {
+        //getrusage(RUSAGE_CHILDREN, &start);
+        child = bgJobs.backgroundJobs[bgJobs.bgJobCounter-1];
+        start = bgJobs.starts[bgJobs.bgJobCounter-1];
+        waitpid(bgJobs.backgroundJobs[bgJobs.bgJobCounter-1], &status, WNOHANG);
         printf("[%d] %d : Exited\n", bgJobs.bgJobCounter,
                bgJobs.backgroundJobs[bgJobs.bgJobCounter-1]);
+        printf("PostRun(PID:%d): %s -- ", child, bgJobs.bgCommands[bgJobs.bgJobCounter-1]);
+        enum timeType type = USER;
+        getCompletionTime(type, &start);
+        type = SYSTEM;
+        getCompletionTime(type, &start);
 
-        waitpid(bgJobs.backgroundJobs[bgJobs.bgJobCounter-1], &status, WNOHANG);
         if (status)
         {
             kill(bgJobs.backgroundJobs[bgJobs.bgJobCounter-1], SIGKILL);
