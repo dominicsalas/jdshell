@@ -1,7 +1,7 @@
 /**
  * @file   mini437_JG_DS.c
  * @author Jayson Grace (jaysong@unm.edu)
- * @author Dominic Salas (dominic.salas@gmail.com)
+ * @author Dominic Salas
  * @date   9/27/2015
  * @brief  Shell for PA04.
  */
@@ -16,6 +16,10 @@
 #include <sys/wait.h>
 // Gives us rusage
 #include <sys/resource.h>
+// Gives us signal for signal handling
+#include <signal.h>
+
+void printLastTen();
 
 typedef int bool;
 enum { false, true };
@@ -29,54 +33,29 @@ typedef struct
     int tokenCount;
 } TokenContainer;
 
+typedef struct
+{
+    // Store background job pids
+    pid_t backgroundJobs[1024];
+
+    // Number of background jobs running
+    int bgJobCounter;
+} bgContainer;
+
+typedef struct
+{
+    //A 2d array to record the last 10 entries
+    char last10[10][64];
+    // Count of commands
+    int commandCount;
+} CommandContainer;
+
 enum timeType {USER, SYSTEM};
 
+// Specify whether or not debug mode should be run
 bool DEBUG = false;
 
-//A 2d array to record the last 10 entries
-char last10[10][64];
-
-/**
- * This function will be used to record the last 10 commands
- *
- */
-void commandHistory(char **input)
-{
-  //Total number of entries in our last10 array
-  static int total = 0;
-  int i;
-
-  strcpy(last10[total++], *input);
-
-  //I need to not print out empty commands
-//  if (strcmp("\n", **input) || strcmp(" ", **input))
-//  {
-//    return;
-//  }
-//  else
-//  {
-//    strcpy(last10[total++], *input);
-//  }
-
-  if (strcmp("last10\n", *input) == 0)
-  {
-    for (i = 0; i < total; i++)
-    {
-      printf("%s", last10[i]);
-    }
-  }
-
-  if (total == 10)
-  {
-    total = 9;
-    for (i = 1; i < 10; i++)
-    {
-      *last10[i-1] = '\0';
-      strcpy(last10[i-1], last10[i]);
-    }
-    *last10[total] = '\0';
-  }
-}
+CommandContainer commands;
 
 /**
   @brief Used to get the line input by the user.
@@ -88,7 +67,6 @@ char *getInput()
     size_t bufferSize = BUFFER_SIZE;
 
     getline(&lineInput, &bufferSize, stdin);
-    commandHistory(&lineInput);
     return lineInput;
 }
 
@@ -190,6 +168,58 @@ TokenContainer parseInput(char *input)
 }
 
 /**
+  @brief Check to see if the input command should be a background job
+  @param tc TokenContainer struct with both the tokens and their count
+  @return true if background job, false otherwise
+  */
+bool checkBackgroundJob(TokenContainer *tc)
+{
+    if (strcmp(tc->tokens[tc->tokenCount-1], "&") == 0)
+    {
+        if (DEBUG)
+            printf("Background job requested\n");
+        return true;
+    }
+    return false;
+}
+
+/**
+@brief Add command to history
+@param tc TokenContainer struct with both the tokens and their count
+*/
+void addToHistory(TokenContainer *tc)
+{
+    int i = 0;
+
+    // If ten commands are in history, delete the first one and shift the rest up
+    if (commands.commandCount == 10)
+    {
+        commands.commandCount = 9;
+        for (i = 1; i < 10; i++)
+        {
+            *commands.last10[i-1] = '\0';
+            strcpy(commands.last10[i-1], commands.last10[i]);
+        }
+        *commands.last10[commands.commandCount] = '\0';
+    }
+    else
+        if (DEBUG)
+            printLastTen();
+
+    strcpy(commands.last10[commands.commandCount++], *tc->tokens);
+
+    if (DEBUG)
+    {
+        printf("\nAfter Override: \n");
+        printLastTen();
+    }
+
+    if (DEBUG)
+        printf("Count: %d\n", commands.commandCount);
+
+}
+
+/**
   @brief Launch program made up of tokens in parameter TokenContainer and terminate when done
   @param tc TokenContainer struct with both the tokens and their count
   @return true to continue execution of the shell
@@ -198,16 +228,20 @@ bool launchCommands(TokenContainer *tc)
 {
     pid_t child;
     struct rusage start;
+    //    bool bg = checkBackgroundJob(tc);
 
     preRun(tc);
     getrusage(RUSAGE_CHILDREN, &start);
 
+    addToHistory(tc);
     child = fork();
 
     // Make sure pid is child process
     if (child == 0)
     {
-        if (execvp(tc->tokens[0], tc->tokens) == -1)
+        if (strcmp(tc->tokens[0], "last10") == 0)
+            printLastTen();
+        else if (execvp(tc->tokens[0], tc->tokens) == -1)
         {
             perror("Failed on child process in launchCommands");
         }
@@ -225,6 +259,21 @@ bool launchCommands(TokenContainer *tc)
         postRun(tc, &start, child);
     }
     return true;
+}
+
+/**
+ * @brief Print the last ten commands input
+ */
+void printLastTen()
+{
+    int i;
+    // If no commands exist yet
+    if (commands.commandCount == 0)
+        printf("\n");
+    for (i = 0; i < commands.commandCount; i++)
+    {
+        printf("%d:%s\n", i, commands.last10[i]);
+    }
 }
 
 /**
@@ -259,6 +308,8 @@ bool exitRequested(TokenContainer *tc)
 /**
   @brief Loop getting input and executing it.
   */
+  #define YELLOW "\x1b[33m"
+  #define NORMAL_COLOR "\x1b[0m"
 void shellLoop()
 {
     char *input;
@@ -267,7 +318,7 @@ void shellLoop()
 
     while(running)
     {
-        printf("mini437sh-JG-DS: ");
+        printf(YELLOW "λ mini437sh-JG-DS: " NORMAL_COLOR);
         input = getInput();
         tc = parseInput(input);
         if (!emptyInput(&tc))
@@ -286,6 +337,17 @@ void shellLoop()
 }
 
 /**
+  @brief Used to handle SIG INTs
+  @param signalNumber The associated SIG INT
+  */
+void signalHandler(int signalNumber)
+{
+    signal(SIGINT, signalHandler);
+    printLastTen();
+    fflush(stdout);
+}
+
+/**
   @brief Entry into program
   @param argc Argument count
   @param argv Argument vector
@@ -293,6 +355,8 @@ void shellLoop()
   */
 int main(int argc, char **argv)
 {
+    signal(SIGINT, signalHandler);
+    commands.commandCount = 0;
     shellLoop();
     return EXIT_SUCCESS;
 }
