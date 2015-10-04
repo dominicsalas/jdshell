@@ -191,9 +191,9 @@ bool checkBackgroundJob(TokenContainer *tc)
 }
 
 /**
-@brief Add command to history
-@param tc TokenContainer struct with both the tokens and their count
-*/
+  @brief Add command to history
+  @param tc TokenContainer struct with both the tokens and their count
+  */
 void addToHistory(TokenContainer *tc)
 {
     int i = 0;
@@ -223,7 +223,20 @@ void addToHistory(TokenContainer *tc)
 
     if (DEBUG)
         printf("Count: %d\n", commands.commandCount);
+}
 
+/**
+  @brief Used if we want to change the current directory with the cd command
+  @param tc TokenContainer struct with both the tokens and their count
+  */
+void changeDirectory(TokenContainer *tc)
+{
+    if (tc->tokens[1] == NULL)
+    {
+        tc->tokens[1] = getenv("HOME");
+    }
+    if (chdir(tc->tokens[1]) != 0)
+        perror("Error occured in changing directory");
 }
 
 /**
@@ -241,50 +254,56 @@ bool launchCommands(TokenContainer *tc)
     getrusage(RUSAGE_CHILDREN, &start);
 
     addToHistory(tc);
-    child = fork();
 
-    if(!child)
-    {
-        if(bg)
-        {
-            int out = open("/dev/null", O_WRONLY);
-            dup2(out, 0);
-            dup2(out, 1);
-            dup2(out, 2);
-            close(out);
-        }
-    }
-
-    // Make sure pid is child process
-    if (child == 0)
-    {
-        if (strcmp(tc->tokens[0], "last10") == 0)
-            printLastTen();
-        else if (execvp(tc->tokens[0], tc->tokens) == -1 && !bg)
-        {
-            perror("Failed on child process in launchCommands");
-        }
-        exit(EXIT_FAILURE);
-    }
-    else if (child < 0)
-    {
-        perror("Error forking in launchCommands");
-    }
-    // Parent processes code
+    if (strcmp(tc->tokens[0], "last10") == 0)
+        printLastTen();
+    else if (strcmp(tc->tokens[0], "cd") == 0)
+        changeDirectory(tc);
     else
     {
-        if (bg)
+        child = fork();
+
+        if(!child)
         {
-            bgJobs.backgroundJobs[bgJobs.bgJobCounter++] = child;
-            printf("[%d] %d : Running\n", bgJobs.bgJobCounter, child);
+            if(bg)
+            {
+                int out = open("/dev/null", O_WRONLY);
+                dup2(out, 0);
+                dup2(out, 1);
+                dup2(out, 2);
+                close(out);
+            }
         }
+
+        // Make sure pid is child process
+        if (child == 0)
+        {
+            if (execvp(tc->tokens[0], tc->tokens) == -1 && !bg)
+            {
+                perror("Failed on child process in launchCommands");
+            }
+            exit(EXIT_FAILURE);
+        }
+        else if (child < 0)
+        {
+            perror("Error forking in launchCommands");
+        }
+        // Parent processes code
         else
         {
-            int returnStatus;
-            waitpid(child, &returnStatus, 0);
-            postRun(tc, &start, child);
+            if (bg)
+            {
+                bgJobs.backgroundJobs[bgJobs.bgJobCounter++] = child;
+                printf("[%d] %d : Running\n", bgJobs.bgJobCounter, child);
+            }
+            else
+            {
+                int returnStatus;
+                waitpid(child, &returnStatus, 0);
+            }
         }
     }
+    postRun(tc, &start, child);
     return true;
 }
 
@@ -335,8 +354,8 @@ bool exitRequested(TokenContainer *tc)
 /**
   @brief Loop getting input and executing it.
   */
-  #define YELLOW "\x1b[33m"
-  #define NORMAL_COLOR "\x1b[0m"
+#define YELLOW "\x1b[33m"
+#define NORMAL_COLOR "\x1b[0m"
 void shellLoop()
 {
     char *input;
@@ -345,7 +364,7 @@ void shellLoop()
 
     while(running)
     {
-        printf(YELLOW "λ mini437sh-JG-DS: ", NORMAL_COLOR);
+        printf(YELLOW "λ mini437sh-JG-DS: " NORMAL_COLOR);
         input = getInput();
         tc = parseInput(input);
         if (!emptyInput(&tc))
@@ -364,7 +383,7 @@ void shellLoop()
     while(bgJobs.bgJobCounter > 0)
     {
         printf("[%d] %d : Exited\n", bgJobs.bgJobCounter,
-               bgJobs.backgroundJobs[bgJobs.bgJobCounter-1]);
+                bgJobs.backgroundJobs[bgJobs.bgJobCounter-1]);
         bgJobs.backgroundJobs[--bgJobs.bgJobCounter] = 0;
     }
 }
@@ -394,4 +413,3 @@ int main(int argc, char **argv)
     shellLoop();
     return EXIT_SUCCESS;
 }
-
