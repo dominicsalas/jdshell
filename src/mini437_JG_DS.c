@@ -44,6 +44,13 @@ typedef struct
 
     // Number of background jobs running
     int bgJobCounter;
+
+    // Start times for background processes
+    struct rusage starts[1024];
+
+    // Stores background commands
+    char bgCommands[64][64];
+
 } bgContainer;
 
 typedef struct
@@ -111,12 +118,12 @@ void getCompletionTime(enum timeType type, struct rusage* startTime)
     if (type == USER)
     {
         printf("user time %ld.%06ld ", currentTime.ru_utime.tv_sec - startTime->ru_utime.tv_sec,
-               (long)currentTime.ru_utime.tv_usec - startTime->ru_utime.tv_usec);
+                (long)currentTime.ru_utime.tv_usec - startTime->ru_utime.tv_usec);
     }
     else
     {
         printf("system time %ld.%06ld\n", currentTime.ru_stime.tv_sec - startTime->ru_stime.tv_sec,
-               (long)currentTime.ru_stime.tv_usec - startTime->ru_stime.tv_usec);
+                (long)currentTime.ru_stime.tv_usec - startTime->ru_stime.tv_usec);
     }
 }
 
@@ -211,8 +218,8 @@ void addToHistory(char *input)
         *commands.last10[commands.commandCount] = '\0';
     }
     else
-    if (DEBUG)
-        printLastTen();
+        if (DEBUG)
+            printLastTen();
 
     strcpy(commands.last10[commands.commandCount++], input);
 
@@ -289,22 +296,27 @@ bool launchCommands(TokenContainer *tc, char *input)
         {
             perror("Error forking in launchCommands");
         }
-            // Parent processes code
+        // Parent processes code
         else
         {
             if (bg)
             {
-                bgJobs.backgroundJobs[bgJobs.bgJobCounter++] = child;
+                // Add the child to the backgroundJobs container
+                bgJobs.backgroundJobs[bgJobs.bgJobCounter] = child;
+                // Collect command for postrun output
+                strcpy(bgJobs.bgCommands[bgJobs.bgJobCounter],tc->tokens[0]);
+                // Associate starting time with background process
+                bgJobs.starts[bgJobs.bgJobCounter++] = start;
                 printf("[%d] %d : Running\n", bgJobs.bgJobCounter, child);
             }
             else
             {
                 int returnStatus;
                 waitpid(child, &returnStatus, 0);
+                postRun(tc, &start, child);
             }
         }
     }
-    postRun(tc, &start, child);
     return true;
 }
 
@@ -353,17 +365,27 @@ bool exitRequested(TokenContainer *tc)
 }
 
 /**
-  @brief Kills the background processes running
+  @brief Kills the background processes running and prints out postrun info for each bg process
   */
 void killChildren()
 {
     int status;
+    pid_t child;
+    struct rusage start;
+
     while(bgJobs.bgJobCounter > 0)
     {
-        printf("[%d] %d : Exited\n", bgJobs.bgJobCounter,
-               bgJobs.backgroundJobs[bgJobs.bgJobCounter-1]);
-
+        child = bgJobs.backgroundJobs[bgJobs.bgJobCounter-1];
+        start = bgJobs.starts[bgJobs.bgJobCounter-1];
         waitpid(bgJobs.backgroundJobs[bgJobs.bgJobCounter-1], &status, WNOHANG);
+        printf("[%d] %d : Exited\n", bgJobs.bgJobCounter,
+                bgJobs.backgroundJobs[bgJobs.bgJobCounter-1]);
+        printf("PostRun(PID:%d): %s -- ", child, bgJobs.bgCommands[bgJobs.bgJobCounter-1]);
+        enum timeType type = USER;
+        getCompletionTime(type, &start);
+        type = SYSTEM;
+        getCompletionTime(type, &start);
+
         if (status)
         {
             kill(bgJobs.backgroundJobs[bgJobs.bgJobCounter-1], SIGKILL);
@@ -400,10 +422,10 @@ void shellLoop()
             }
         }
         free(input);
-        free(tc.tokens);
         free(originalInput);
     }
     killChildren();
+    free(tc.tokens);
 }
 
 /**
