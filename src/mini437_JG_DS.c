@@ -375,19 +375,11 @@ void killChildren()
 
     while(bgJobs.bgJobCounter > 0)
     {
-<<<<<<< HEAD
-        //getrusage(RUSAGE_CHILDREN, &start);
-=======
->>>>>>> upstream/master
         child = bgJobs.backgroundJobs[bgJobs.bgJobCounter-1];
         start = bgJobs.starts[bgJobs.bgJobCounter-1];
         waitpid(bgJobs.backgroundJobs[bgJobs.bgJobCounter-1], &status, WNOHANG);
         printf("[%d] %d : Exited\n", bgJobs.bgJobCounter,
-<<<<<<< HEAD
-               bgJobs.backgroundJobs[bgJobs.bgJobCounter-1]);
-=======
                 bgJobs.backgroundJobs[bgJobs.bgJobCounter-1]);
->>>>>>> upstream/master
         printf("PostRun(PID:%d): %s -- ", child, bgJobs.bgCommands[bgJobs.bgJobCounter-1]);
         enum timeType type = USER;
         getCompletionTime(type, &start);
